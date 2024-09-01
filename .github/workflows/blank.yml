@@ -54,6 +54,6 @@ jobs:
         git config --global user.email "action@github.com"
         git config --global user.name "GitHub Action"
         # git pull origin main # Pull the latest changes from the main branch
-        # git add dns_results/
+        git add dns_results/
         git commit -m "Add DNS query results for $DATE"
         git push origin main

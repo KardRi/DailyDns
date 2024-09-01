@@ -1,0 +1,39 @@
+name: DNS Query
+
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  dns-query:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Install Dig
+      run: sudo apt-get update && sudo apt-get install -y dnsutils
+
+    - name: Query DNS and save results
+      run: |
+        DATE=$(date +"%Y-%m-%d")
+        FILENAME="dns_results_$DATE.txt"
+        echo "Querying DNS for google.com from different DNS servers on $DATE" > $FILENAME
+        for dns in 1.1.1.1 8.8.8.8 101.101.101.101 168.95.1.1; do
+          echo "Querying from DNS: $dns" >> $FILENAME
+          dig @${dns} google.com >> $FILENAME
+          echo "---------------------------------" >> $FILENAME
+        done
+        mkdir -p dns_results
+        mv $FILENAME dns_results/
+
+    - name: Commit and Push results
+      run: |
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+        git add dns_results/
+        git commit -m "Add DNS query results for $DATE"
+        git push

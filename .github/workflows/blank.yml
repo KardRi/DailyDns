@@ -9,36 +9,46 @@ on:
 jobs:
   dns-query:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [1.1.1.1, 8.8.8.8, 101.101.101.101, 168.95.1.1]
-        site: [google.com, ezweb.easycard.com.tw, github.com] # Add any other sites you want to query
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Install Dig
+    - name: Install Dig (Run Once)
       run: sudo apt-get update && sudo apt-get install -y dnsutils
 
-    - name: Query DNS and save results
+    - name: Prepare Results Directory
+      run: mkdir -p dns_results
+
+    - name: Query DNS
       run: |
         DATE=$(date +"%Y-%m-%d")
         FILENAME="dns_results_$DATE.txt"
-        # Check if file exists and create it if not
         if [ ! -f dns_results/$FILENAME ]; then
           echo "Creating new results file: $FILENAME"
           echo "DNS Query Results for $DATE" > dns_results/$FILENAME
           echo "============================" >> dns_results/$FILENAME
         fi
+      shell: bash
+
+    - name: Run DNS Queries
+      run: |
+        DATE=$(date +"%Y-%m-%d")
+        FILENAME="dns_results_$DATE.txt"
         echo "Querying DNS for ${{ matrix.site }} from DNS server ${{ matrix.target }} on $DATE" >> dns_results/$FILENAME
         dig @${{ matrix.target }} ${{ matrix.site }} >> dns_results/$FILENAME
         echo "---------------------------------" >> dns_results/$FILENAME
+      shell: bash
+      strategy:
+        matrix:
+          target: [1.1.1.1, 8.8.8.8, 101.101.101.101, 168.95.1.1]
+          site: [google.com, ezweb.easycard.com.tw, github.com]
 
     - name: Commit and Push results
       run: |
         git config --global user.email "action@github.com"
         git config --global user.name "GitHub Action"
+        git pull origin main # Pull the latest changes from the main branch
         git add dns_results/
         git commit -m "Add DNS query results for $DATE"
-        git push
+        git push origin main

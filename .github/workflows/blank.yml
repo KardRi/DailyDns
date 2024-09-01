@@ -7,45 +7,55 @@ on:
   workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
 
 jobs:
-  dns-query:
+  setup:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Install Dig (Run Once)
+    - name: Install Dig
       run: sudo apt-get update && sudo apt-get install -y dnsutils
 
     - name: Prepare Results Directory
       run: mkdir -p dns_results
 
-    - name: Query DNS
+  dns-query:
+    runs-on: ubuntu-latest
+    needs: setup # This job will run after the 'setup' job is complete
+    strategy:
+      matrix:
+        target: [1.1.1.1, 8.8.8.8, 101.101.101.101, 168.95.1.1]
+        site: [google.com, github.com]
+
+    steps:
+
+
+    - name: Query DNS and save results
       run: |
         DATE=$(date +"%Y-%m-%d")
         FILENAME="dns_results_$DATE.txt"
+        # Check if file exists and create it if not
         if [ ! -f dns_results/$FILENAME ]; then
           echo "Creating new results file: $FILENAME"
           echo "DNS Query Results for $DATE" > dns_results/$FILENAME
           echo "============================" >> dns_results/$FILENAME
         fi
-      shell: bash
-
-    - name: Run DNS Queries
-      run: |
-        DATE=$(date +"%Y-%m-%d")
-        FILENAME="dns_results_$DATE.txt"
         echo "Querying DNS for ${{ matrix.site }} from DNS server ${{ matrix.target }} on $DATE" >> dns_results/$FILENAME
         dig @${{ matrix.target }} ${{ matrix.site }} >> dns_results/$FILENAME
         echo "---------------------------------" >> dns_results/$FILENAME
       shell: bash
-      strategy:
-        matrix:
-          target: [1.1.1.1, 8.8.8.8, 101.101.101.101, 168.95.1.1]
-          site: [google.com, ezweb.easycard.com.tw, github.com]
+
+  commit-results:
+    runs-on: ubuntu-latest
+    needs: dns-query # This job will run after the 'dns-query' job is complete
+
+    steps:
+
 
     - name: Commit and Push results
       run: |
+        DATE=$(date +"%Y-%m-%d")
         git config --global user.email "action@github.com"
         git config --global user.name "GitHub Action"
         git pull origin main # Pull the latest changes from the main branch

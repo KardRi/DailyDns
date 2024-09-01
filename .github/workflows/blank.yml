@@ -4,11 +4,15 @@ on:
   schedule:
     # Run at 00:00 UTC every day
     - cron: '0 0 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
 
 jobs:
   dns-query:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [1.1.1.1, 8.8.8.8, 101.101.101.101, 168.95.1.1]
+        site: [google.com, ezweb.easycard.com.tw, github.com] # Add any other sites you want to query
 
     steps:
     - name: Checkout Repository
@@ -21,12 +25,9 @@ jobs:
       run: |
         DATE=$(date +"%Y-%m-%d")
         FILENAME="dns_results_$DATE.txt"
-        echo "Querying DNS for google.com from different DNS servers on $DATE" > $FILENAME
-        for dns in 1.1.1.1 8.8.8.8 101.101.101.101 168.95.1.1; do
-          echo "Querying from DNS: $dns" >> $FILENAME
-          dig @${dns} google.com >> $FILENAME
-          echo "---------------------------------" >> $FILENAME
-        done
+        echo "Querying DNS for ${{ matrix.site }} from DNS server ${{ matrix.target }} on $DATE" >> $FILENAME
+        dig @${{ matrix.target }} ${{ matrix.site }} >> $FILENAME
+        echo "---------------------------------" >> $FILENAME
         mkdir -p dns_results
         mv $FILENAME dns_results/
 
